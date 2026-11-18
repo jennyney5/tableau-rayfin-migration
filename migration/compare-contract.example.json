@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "scenario": "REPLACE_WITH_WORKSHEET_AND_SCENARIO",
+  "keys": ["Dimension"],
+  "columns": {
+    "Dimension": {"type": "string"},
+    "Value": {"type": "decimal"}
+  },
+  "null_tokens": ["\\N"],
+  "baseline": {
+    "file": "tableau.csv",
+    "sha256": "REPLACE_WITH_EXPORT_SHA256",
+    "engine": "tableau-desktop",
+    "workbook_sha256": "REPLACE_WITH_ORIGINAL_TWBX_SHA256",
+    "worksheet": "REPLACE_WITH_EXACT_WORKSHEET",
+    "state": {
+      "filters": {},
+      "parameters": {}
+    }
+  },
+  "candidate": {
+    "file": "target.csv",
+    "sha256": "REPLACE_WITH_EXPORT_SHA256",
+    "engine": "REPLACE_WITH_TARGET_BACKEND",
+    "workbook_sha256": "REPLACE_WITH_ORIGINAL_TWBX_SHA256",
+    "worksheet": "REPLACE_WITH_EXACT_WORKSHEET",
+    "state": {
+      "filters": {},
+      "parameters": {}
+    }
+  }
+}

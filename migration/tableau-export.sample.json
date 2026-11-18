@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "workbook_url": "https://example.online.tableau.com/#/site/contoso/views/SampleWorkbook/Dashboard",
+  "source_package": "..\\Sample Workbook.twbx",
+  "source_workbook_sha256": "REPLACE_WITH_ORIGINAL_TWBX_SHA256",
+  "token_name": "sample-export",
+  "scenarios": [
+    {
+      "id": "saved-default",
+      "filters": {},
+      "parameters": {}
+    }
+  ]
+}
