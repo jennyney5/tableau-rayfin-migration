@@ -1,0 +1,14 @@
+{
+  "version": "rayfin-reviewed-2026-11-23-v1",
+  "target": "rayfin-semantic-model",
+  "automatic_migration_verified": false,
+  "skill": "tableau-rayfin-migration",
+  "capabilities": {
+    "inventory": "available",
+    "tableau_reference_capture": "available_with_reviewed_bindings_and_access",
+    "typed_comparison": "available_with_reviewed_contract",
+    "generic_translation": "not_available",
+    "report_specific_translation": "requires_review",
+    "security": "requires_private_identity_and_backend_tests"
+  }
+}

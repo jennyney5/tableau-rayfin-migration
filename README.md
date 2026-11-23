@@ -3,10 +3,37 @@
 An accuracy-first skill for recreating Tableau reports as Rayfin apps backed by
 Microsoft Fabric, with independent validation of data, calculations and behavior.
 
+## Choose Your Workflow
+
+This repository contains two separate skills sharing versioned inventory tooling:
+
+| Goal | Skill | Cloud access |
+|---|---|---|
+| Assess TWBX readiness and explain blockers | [tableau-migration-evaluation](.github/skills/tableau-migration-evaluation/SKILL.md) | Not required for local evaluation |
+| Recreate a workbook and validate the result | [tableau-rayfin-migration](.github/skills/tableau-rayfin-migration/SKILL.md) | Explicit source/target authorization required |
+
+Evaluation does not initiate migration, create apps/models, or require migration
+acceptance evidence. The current evaluation profile provides conservative,
+provisional semi-automated recommendations; it is not a calibrated three-way
+classifier or a guarantee of feasibility.
+
+After installing the helpers below, evaluate a private TWBX or directory:
+
+```powershell
+.\.venv\Scripts\python.exe migration-evaluation/evaluator.py evaluate --input "C:\private-input\Sample Workbook.twbx" --output migration-evaluation/runs/sample-001
+```
+
+Or ask Copilot: "Use tableau-migration-evaluation to assess these TWBX files.
+Do not migrate anything." See the [evaluation README](migration-evaluation/README.md)
+for Public example downloads, output interpretation and customer ZIP packaging.
+Generated runs are ignored by Git but can still contain sensitive source metadata.
+
 ## What is included
 
 - The reusable [migration skill](.github/skills/tableau-rayfin-migration/SKILL.md)
   and four on-demand reference guides.
+- A separate evaluation skill, local evaluator, schemas, capability profile,
+  seven-family blocker guidance, Public candidate catalog and customer ZIP builder.
 - Generic Python helpers for TWBX inventory, Hyper profiling, authenticated
   Tableau worksheet exports and typed CSV reconciliation.
 - Synthetic, offline tests and placeholder-only configuration templates.

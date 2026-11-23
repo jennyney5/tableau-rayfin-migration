@@ -27,4 +27,4 @@ tableau-migration = "tableau_migration.cli:main"
 where = ["tools/tableau-migration/src"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "migration-evaluation/tests"]

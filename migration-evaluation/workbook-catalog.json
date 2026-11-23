@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "workbooks": [
+    {
+      "id": "lod",
+      "title": "Mastering Tableau 8 - FIXED INCLUDE EXCLUDE",
+      "author": "Ruben Martinez",
+      "source_page": "https://public.tableau.com/views/MasteringTableau8_LOD1-FIXEDINCLUDEEXCLUDEexamples/Dashboard",
+      "download_url": "https://public.tableau.com/workbooks/MasteringTableau8_LOD1-FIXEDINCLUDEEXCLUDEexamples.twb?showVizHome=no",
+      "local_file": "../private/lod.twbx",
+      "tests": ["T01", "T02"],
+      "reuse_review": "Download is enabled; review author/source licensing before customer redistribution. Retain attribution."
+    },
+    {
+      "id": "window",
+      "title": "Mastering Tableau 17 - Window Comparisons",
+      "author": "Ruben Martinez",
+      "source_page": "https://public.tableau.com/views/MasteringTableau17_Tablecalculations2-Windowcomparisons/Dashboard",
+      "download_url": "https://public.tableau.com/workbooks/MasteringTableau17_Tablecalculations2-Windowcomparisons.twb?showVizHome=no",
+      "local_file": "../private/window.twbx",
+      "tests": ["T01", "T02", "T03"],
+      "reuse_review": "Workbook option observed in Public download menu; review licensing before redistribution. Retain attribution."
+    },
+    {
+      "id": "drill-downs",
+      "title": "All Different Types of Drill-Downs in Tableau",
+      "author": "Alfred Chan",
+      "source_page": "https://public.tableau.com/views/AllDifferentTypesofDrill-DownsinTableau/Dashboard",
+      "download_url": "https://public.tableau.com/workbooks/AllDifferentTypesofDrill-DownsinTableau.twb?showVizHome=no",
+      "local_file": "../private/drill-downs.twbx",
+      "tests": ["T01", "T02", "T03", "T06", "T08"],
+      "reuse_review": "Public endpoint allows download; review author/source licensing before redistribution. Retain attribution."
+    }
+  ],
+  "required_gaps": [
+    {"test": "T04", "gap": "No accepted exact duplicate/null/date-boundary/precision test coverage yet"},
+    {"test": "T05", "gap": "Intentional caption/formula conflict needs owner confirmation or permitted browser-authored copy"},
+    {"test": "T06", "gap": "Relationship metadata is not proof of tested cardinality/fan-out states"},
+    {"test": "T07", "gap": "Restricted and unmapped identities need private Tableau and target backend tests; Public is insufficient"}
+  ]
+}

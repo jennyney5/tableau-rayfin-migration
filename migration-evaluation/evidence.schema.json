@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Independent reviewer declarations - not a substitute for validation",
+  "type": "object",
+  "required": ["assessment_sha256", "source_sha256", "profile_sha256", "workflow_sha256", "reviewer", "target_identity", "precision_policy", "scope_approved", "independent_review_completed", "artifacts", "scenarios", "gates", "interventions", "finding_resolutions"],
+  "$defs": {
+    "hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "text": {"type": "string", "pattern": "\\S"},
+    "artifact": {"type": "object", "required": ["file", "sha256"], "properties": {"file": {"$ref": "#/$defs/text"}, "sha256": {"$ref": "#/$defs/hash"}}, "additionalProperties": false},
+    "artifacts": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/artifact"}},
+    "gate": {"type": "object", "required": ["status", "artifacts"], "properties": {"status": {"enum": ["passed", "failed", "unverified"]}, "artifacts": {"$ref": "#/$defs/artifacts"}}, "additionalProperties": false}
+  },
+  "properties": {
+    "assessment_sha256": {"$ref": "#/$defs/hash"},
+    "source_sha256": {"$ref": "#/$defs/hash"},
+    "profile_sha256": {"$ref": "#/$defs/hash"},
+    "workflow_sha256": {"$ref": "#/$defs/hash"},
+    "reviewer": {"$ref": "#/$defs/text"},
+    "target_identity": {
+      "type": "object", "required": ["tenant", "workspace", "model", "app", "deployment_version"],
+      "properties": {"tenant": {"$ref": "#/$defs/text"}, "workspace": {"$ref": "#/$defs/text"}, "model": {"$ref": "#/$defs/text"}, "app": {"$ref": "#/$defs/text"}, "deployment_version": {"$ref": "#/$defs/text"}},
+      "additionalProperties": false
+    },
+    "precision_policy": {"$ref": "#/$defs/text"},
+    "scope_approved": {"type": "boolean"},
+    "independent_review_completed": {"type": "boolean"},
+    "artifacts": {"$ref": "#/$defs/artifacts"},
+    "scenarios": {
+      "type": "array", "minItems": 1,
+      "items": {"type": "object", "required": ["worksheet", "id", "status", "artifacts"], "properties": {"worksheet": {"$ref": "#/$defs/text"}, "id": {"$ref": "#/$defs/text"}, "status": {"enum": ["passed", "failed", "unverified"]}, "artifacts": {"$ref": "#/$defs/artifacts"}}, "additionalProperties": false}
+    },
+    "gates": {
+      "type": "object", "required": ["provenance", "physical_data", "worksheet_calculations", "app_queries", "runtime", "security", "independent_review"],
+      "properties": {"provenance": {"$ref": "#/$defs/gate"}, "physical_data": {"$ref": "#/$defs/gate"}, "worksheet_calculations": {"$ref": "#/$defs/gate"}, "app_queries": {"$ref": "#/$defs/gate"}, "runtime": {"$ref": "#/$defs/gate"}, "security": {"$ref": "#/$defs/gate"}, "independent_review": {"$ref": "#/$defs/gate"}},
+      "additionalProperties": false
+    },
+    "interventions": {
+      "type": "array",
+      "items": {"type": "object", "required": ["task", "owner", "active_minutes"], "properties": {"task": {"$ref": "#/$defs/text"}, "owner": {"$ref": "#/$defs/text"}, "active_minutes": {"type": "number", "minimum": 0}}, "additionalProperties": false}
+    },
+    "finding_resolutions": {
+      "type": "object", "minProperties": 1,
+      "additionalProperties": {"type": "object", "required": ["status", "details", "artifacts"], "properties": {"status": {"enum": ["resolved", "unresolved"]}, "details": {"$ref": "#/$defs/text"}, "artifacts": {"$ref": "#/$defs/artifacts"}}, "additionalProperties": false}
+    },
+    "constraint_conflict": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "object", "required": ["requirement", "constraint", "attempted_supported_path", "reassessment_condition", "owner", "owner_approved", "artifacts"],
+         "properties": {"requirement": {"$ref": "#/$defs/text"}, "constraint": {"$ref": "#/$defs/text"}, "attempted_supported_path": {"$ref": "#/$defs/text"}, "reassessment_condition": {"$ref": "#/$defs/text"}, "owner": {"$ref": "#/$defs/text"}, "owner_approved": {"const": true}, "artifacts": {"$ref": "#/$defs/artifacts"}},
+         "additionalProperties": false}
+      ]
+    }
+  },
+  "additionalProperties": false
+}

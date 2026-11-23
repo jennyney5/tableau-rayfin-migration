@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tableau migration assessment",
+  "type": "object",
+  "required": ["schema_version", "tool_version", "tool_sha256", "workflow_sha256", "assessment_id", "source", "profile_sha256", "inventory_sha256", "target", "assessment_status", "category", "recommended_category", "decision_stage", "full_migration_certified", "findings", "worksheet_decisions", "gates"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "tool_version": {"type": "string"},
+    "tool_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "workflow_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "assessment_id": {"type": "string", "minLength": 1},
+    "source": {
+      "type": "object", "required": ["file", "sha256", "twb_member"],
+      "properties": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+    },
+    "profile_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "inventory_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "target": {"const": "rayfin-semantic-model"},
+    "assessment_status": {"enum": ["complete", "needs_evidence", "blocked_environment"]},
+    "category": {"enum": [null, 1, 2, 3]},
+    "recommended_category": {"enum": [1, 2, 3]},
+    "decision_stage": {"enum": ["provisional", "confirmed"]},
+    "full_migration_certified": {"type": "boolean"},
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "blocker", "source_coordinate", "worksheets", "detected", "owner", "remedy", "closure_check"],
+        "properties": {
+          "blocker": {"enum": ["calculation_semantics", "visual_dependencies", "parameters_interactions", "data_types", "ambiguous_source_logic", "relationships", "security"]},
+          "worksheets": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "worksheet_decisions": {"type": "array", "minItems": 1},
+    "gates": {"type": "object"}
+  },
+  "allOf": [
+    {"if": {"properties": {"full_migration_certified": {"const": true}}}, "then": {"properties": {"category": {"enum": [1, 2]}, "decision_stage": {"const": "confirmed"}, "assessment_status": {"const": "complete"}}}}
+  ]
+}

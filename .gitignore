@@ -29,6 +29,8 @@ node_modules/
 *discrepancies*
 migration/output/
 migration/baselines/
+migration-evaluation/runs/
+migration-evaluation/dist/
 migration/tableau-export*.json
 !migration/tableau-export.sample.json
 evidence/
