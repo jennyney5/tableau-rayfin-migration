@@ -15,7 +15,7 @@ MODULES = ("__init__.py", "common.py", "expressions.py", "inventory.py", "profil
 
 def bundle(output: Path) -> int:
     repository = ROOT.parent
-    files = [repository / "pyproject.toml", repository / "requirements.windows.lock"]
+    files = [repository / "README.md", repository / "pyproject.toml", repository / "requirements.windows.lock"]
     toolkit = repository / "tools" / "tableau-migration" / "src" / "tableau_migration"
     files.extend(toolkit / name for name in MODULES)
     files.extend((repository / ".github" / "skills" / "tableau-rayfin-migration").rglob("*.md"))

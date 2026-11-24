@@ -112,7 +112,10 @@ def load_config(path: Path) -> dict:
 
 
 def credential_service(config: dict) -> str:
-    server, site, _ = target(config["workbook_url"])
+    if "workbook_url" in config:
+        server, site, _ = target(config["workbook_url"])
+    else:
+        server, site = config["server_url"], config["site_content_url"]
     return f"tableau-rayfin:{server}/site/{site}"
 
 

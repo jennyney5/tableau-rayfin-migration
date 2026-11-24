@@ -24,7 +24,10 @@ def test_bundle_is_first_party_and_imports_its_toolkit(tmp_path: Path) -> None:
     extracted = tmp_path / "extracted"
     with ZipFile(archive_path) as archive:
         names = archive.namelist()
+        assert "README.md" in names
         assert "migration-evaluation/evaluator.py" in names
+        assert "migration-evaluation/cloud.py" in names
+        assert "migration-evaluation/cloud-config.example.json" in names
         assert "bundle-manifest.json" in names
         assert ".github/skills/tableau-rayfin-migration/SKILL.md" in names
         assert ".github/skills/tableau-migration-evaluation/SKILL.md" in names
@@ -44,6 +47,12 @@ def test_bundle_is_first_party_and_imports_its_toolkit(tmp_path: Path) -> None:
     assert help_result.returncode == 0, help_result.stderr
     assert "prepare-evidence" in help_result.stdout
     assert "evaluate" in help_result.stdout
+    cloud_help = subprocess.run(
+        [sys.executable, "migration-evaluation/cloud.py", "--help"],
+        cwd=extracted, env=environment, capture_output=True, text=True, check=False,
+    )
+    assert cloud_help.returncode == 0, cloud_help.stderr
+    assert "configure" in cloud_help.stdout
     evaluation_result = subprocess.run(
         [sys.executable, "migration-evaluation/evaluator.py", "evaluate", "--input", str(workbook(tmp_path)),
          "--output", "migration-evaluation/runs/customer-test"],

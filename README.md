@@ -9,6 +9,7 @@ This repository contains two separate skills sharing versioned inventory tooling
 
 | Goal | Skill | Cloud access |
 |---|---|---|
+| Assess a Tableau Cloud site's accessible workbooks | [Cloud quickstart](#cloud-customer-quickstart) | Read and workbook-download permission required |
 | Assess TWBX readiness and explain blockers | [tableau-migration-evaluation](.github/skills/tableau-migration-evaluation/SKILL.md) | Not required for local evaluation |
 | Recreate a workbook and validate the result | [tableau-rayfin-migration](.github/skills/tableau-rayfin-migration/SKILL.md) | Explicit source/target authorization required |
 
@@ -28,6 +29,41 @@ Or ask Copilot: "Use tableau-migration-evaluation to assess these TWBX files.
 Do not migrate anything." See the [evaluation README](migration-evaluation/README.md)
 for Public example downloads, output interpretation and customer ZIP packaging.
 Generated runs are ignored by Git but can still contain sensitive source metadata.
+
+## Cloud Customer Quickstart
+
+1. Open the repository or complete extracted customer bundle in VS Code. Install
+  Python 3.12+ and the [helper dependencies](#install-the-optional-helpers) first.
+2. Create a private folder outside the repo. Use
+  [cloud-config.example.json](migration-evaluation/cloud-config.example.json) to
+  create your private config with your Tableau HTTPS origin, site content URL slug
+  and PAT name. Obtain permission to list and download the intended workbooks.
+  Never put the PAT secret in JSON, chat or source control.
+3. In your own interactive Windows terminal, store the PAT using hidden input:
+
+```powershell
+.\.venv\Scripts\python.exe migration-evaluation/cloud.py configure --config "C:\TableauPrivate\cloud-config.json"
+```
+
+4. Run evaluation into a new private output directory:
+
+The detailed API workflow automatically
+discovers accessible workbooks and downloads definitions without requesting extracts:
+
+```powershell
+.\.venv\Scripts\python.exe migration-evaluation/cloud.py evaluate --config "C:\TableauPrivate\cloud-config.json" --output "C:\TableauPrivate\runs\cloud-001"
+```
+
+See [Cloud setup and limitations](migration-evaluation/README.md#tableau-cloud-detailed-site-evaluation)
+for secure PAT configuration. Scope is content visible to the identity in one site.
+Read `cloud-summary.md` and the linked workbook reports. Unknown detected features
+remain **Undetermined**, not automatically supported or unsupported. Exit 1 means
+partial processing; inspect failures before treating the inventory as assessed.
+
+Downloads and derived reports are retained and may contain sensitive content, even
+when extracts were not requested. Use customer-approved storage and retention;
+delete the entire private run directory when no longer needed. No migration or
+deployment occurs. Metadata-only screening is not part of this workflow.
 
 ## What is included
 

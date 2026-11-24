@@ -40,6 +40,74 @@ Unknown capabilities remain undetermined rather than being forced into a categor
 
 ## Start Here
 
+### Tableau Cloud: Detailed Site Evaluation
+
+The Cloud route lists accessible site workbooks through the REST API, downloads
+definitions with `include_extract=False`, and runs the existing detailed classifier
+locally. No manual TWBX intake or Tableau Desktop is needed. Metadata-only screening
+is not implemented. The download-based route has passed an authorized live-site
+scan and offline mocked tests. Validate permissions and behavior on each customer site.
+
+Use [cloud-config.example.json](cloud-config.example.json) to create a private config
+outside this repository, for example `C:\TableauPrivate\cloud-config.json`. Supply
+the HTTPS server origin, site content URL slug (not display name), and PAT name.
+Never put the secret in JSON, chat, source control or command-line arguments.
+The identity must be authorized to list/download the intended workbooks.
+
+Run `configure` yourself in an interactive Windows terminal for hidden secret entry
+and storage in Windows Credential Manager, then evaluate:
+
+```powershell
+.\.venv\Scripts\python.exe migration-evaluation/cloud.py configure --config C:\TableauPrivate\cloud-config.json
+.\.venv\Scripts\python.exe migration-evaluation/cloud.py evaluate --config C:\TableauPrivate\cloud-config.json --output C:\TableauPrivate\runs\cloud-001
+```
+
+For CI, inject both `TABLEAU_TOKEN_NAME` and `TABLEAU_TOKEN_SECRET` through a secret
+manager. The name must match configuration. Secrets and raw server error messages
+are not printed; failed workbook records contain stage and exception type.
+Exit 0 means evaluation completed, 1 means partial discovery/processing, and 2 means
+setup/authentication/command failure. Every output directory must be new.
+
+Outputs include `cloud-inventory.json`, `cloud-summary.json`, `cloud-summary.md`,
+downloaded definitions and per-workbook detailed reports. Plain TWB responses are
+packaged locally. Downloads are limited to 50 MiB each; ZIP safety checks also apply.
+Temporary downloads are removed after individual failures.
+Successful packages and assessment artifacts are retained, not automatically deleted.
+`include_extract=False` is a request to omit extracts, not a guarantee that returned
+packages contain no embedded data or sensitive content. Obtain approval for content
+transfer and use customer-approved storage before running the scan. After review,
+retain or delete the entire private run directory according to customer policy.
+
+- Scope is one site and content visible to the authenticated identity. Inaccessible
+	workbooks cannot be counted. Repeat for other sites or with authorized broader access.
+- All pages are discovered before assessment. Inconsistent totals/duplicate IDs fail
+	discovery. This is not an atomic snapshot; definitions can change after discovery.
+- Download/processing failures remain unclassified, not category 3; other workbooks
+	continue after individual failures.
+- Published data-source definitions may not be embedded and are not downloaded
+	separately. Review missing-source coverage before relying on readiness predictions.
+- No extracts are requested, and no physical profiling, live results, runtime,
+	effective-security or numerical-parity validation is performed.
+- Definitions, assets and reports are sensitive customer material. Use approved
+	private storage/access controls and retention; never add output to the public kit.
+
+Known detected capabilities retain their profile-based category. A detected feature
+without a reviewed rule remains Undetermined with its source coordinate and next
+action. Detectors are not an exhaustive Tableau schema or a generic translator:
+review novel workbook behavior and missing dependencies rather than assuming that
+an absent finding proves support. These are readiness predictions, not guarantees.
+
+Customer acceptance checklist:
+
+1. Confirm the site, authorized identity, download permission and private retention policy.
+2. Confirm discovery completed and compare the visible workbook count with Tableau.
+3. Inspect any failed downloads/assessments and every Undetermined result; never
+   reinterpret an access failure as category 3 or silently omit it from the handoff.
+4. Review linked per-workbook reasons, source coordinates, manual tasks and limitations.
+5. Keep customer configs, credentials and run artifacts out of any code/skill handoff.
+
+### Local Setup
+
 Run commands from the repository or extracted handoff bundle root, not this
 subfolder. Python 3.12+ and the generic toolkit dependencies are required. An
 existing repository environment can be reused; a new customer environment uses:

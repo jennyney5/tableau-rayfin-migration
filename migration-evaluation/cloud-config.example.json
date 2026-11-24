@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "server_url": "https://your-pod.online.tableau.com",
+  "site_content_url": "your-site-content-url",
+  "token_name": "evaluation-readonly"
+}

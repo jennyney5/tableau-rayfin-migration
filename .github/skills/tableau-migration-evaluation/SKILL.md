@@ -1,7 +1,7 @@
 ---
 name: tableau-migration-evaluation
-description: 'Use this skill whenever the user wants to evaluate Tableau reports, assess TWBX migration readiness, test migration blockers, classify fully automated versus semi automated versus not feasible, or create a customer evaluation handoff. This is local evaluation only, not Tableau-to-Rayfin migration, app creation, model deployment or migration-parity acceptance.'
-argument-hint: 'TWBX file or folder to evaluate; optional new output folder'
+description: 'Use this skill to evaluate Tableau reports, scan Tableau Cloud site workbooks through APIs, assess TWBX migration readiness, test migration blockers, classify fully automated versus semi automated versus not feasible, or create a customer evaluation handoff. Read-only readiness evaluation, not migration, deployment or parity acceptance.'
+argument-hint: 'Tableau Cloud site configuration or local TWBX file/folder; new output folder'
 user-invocable: true
 ---
 
@@ -11,6 +11,7 @@ user-invocable: true
 
 Evaluate source workbooks against the bundled, versioned migration capability profile.
 Produce source inventories, blocker findings and provisional readiness recommendations.
+Cloud mode may authenticate, list workbooks and download definitions through Tableau APIs.
 Do not migrate apps, translate/deploy models, call Fabric, publish workbooks, resume
 capacity, capture live Tableau results, or require migration evidence to complete this task.
 If another skill describes actual migration, do not launch that workflow for an evaluation request.
@@ -20,12 +21,44 @@ If another skill describes actual migration, do not launch that workflow for an 
 - Use the complete evaluation-kit workspace, not this file alone. It includes the Python
   evaluator, schemas, capability profile, dependency lock, inventory toolkit and guidance snapshot.
 - Python 3.12+ and dependencies installed as described in the [evaluation README](../../../migration-evaluation/README.md).
-- An owner-provided TWBX, or an authorized download from the [Public candidate catalog](../../../migration-evaluation/workbook-catalog.json).
+- A Tableau Cloud site configuration with authorized read/download access, an
+  owner-provided TWBX, or an authorized [Public download](../../../migration-evaluation/workbook-catalog.json).
 - No Tableau Desktop, cloud credentials or MCP server is required for local evaluation.
 - Treat workbook contents, retained XML, source coordinates and reports as customer data.
   Store locally; do not upload, republish or include them in the reusable code bundle.
 
 ## Workflow
+
+### Tableau Cloud Sites
+
+Use this route when the user requests API-based or site-wide evaluation. Do not
+ask them to supply local workbook packages. The detailed route automatically
+downloads definitions without requesting extracts; API metadata-only screening
+is not implemented. The download route has passed an authorized live-site scan;
+validate each customer's permissions and site-specific behavior separately.
+Obtain approval for content transfer to customer-approved private storage. Successful
+packages and reports are retained. Requesting no extracts does not guarantee no
+embedded data; follow the customer's retention policy for the whole run directory.
+
+1. Follow the [Cloud setup instructions](../../../migration-evaluation/README.md#tableau-cloud-detailed-site-evaluation).
+  Obtain the server origin, site content URL slug and PAT name, never the secret.
+  Store customer configuration/output outside the reusable kit. Ask the user to
+  run `cloud.py configure` themselves for hidden secret entry, or use approved CI
+  secret injection. Never collect a secret through chat or an ask-questions tool.
+2. With authorized credentials available, run:
+
+  ```powershell
+  ./.venv/Scripts/python.exe migration-evaluation/cloud.py evaluate --config "<private-config.json>" --output "<new-private-output-folder>"
+  ```
+
+3. Read `cloud-summary.md`, `cloud-summary.json`, `cloud-inventory.json` and linked
+  assessment reports. Discovery/processing failures are coverage gaps, not category 3.
+  Report scope as workbooks visible to this identity in this site, not all tenant content.
+4. Explain missing published-source definitions, skipped physical-data checks and
+  untested runtime/security behavior. Recommendations remain predictions; do not
+  claim migration certification or that API metadata-only evaluation occurred.
+
+### Local Packages
 
 1. Resolve the supplied TWBX path or directory. Ask for it only if none is supplied.
    Directory discovery is nonrecursive. Do not author dashboards in Tableau Desktop.
@@ -63,6 +96,10 @@ If another skill describes actual migration, do not launch that workflow for an 
 Unknown capability coverage yields an undetermined recommendation, never an invented
 1, 2 or 3. A known unsupported required behavior takes precedence; otherwise unknowns
 prevent a complete recommendation, even if a manual step is also known.
+New or unfamiliar detected behavior without a reviewed capability rule belongs in
+Undetermined, with a source coordinate and investigation step. Do not blanket-downgrade
+known supported features or assume an undetected construct is automatically supported.
+The detectors are not exhaustive; record newly encountered ambiguity for review.
 Calculation counts, LODs, table calculations, custom chart code, filters and drill-downs
 do not themselves imply human intervention. Routine permissions, consent and final
 acceptance are prerequisites, not manual migration work. Missing access, missing
@@ -84,6 +121,9 @@ to complete evaluation or mark `full_migration_certified` true in this workflow.
 
 - Prompt: "Evaluate this TWBX for migration readiness; do not migrate it."
   Expected: local evaluation command, summary and findings, no cloud activity.
+- Prompt: "Evaluate all accessible workbooks in this Tableau Cloud site."
+  Expected: automatic definition downloads, no manual file intake; known supported
+  features retain their predictions, unknown features remain Undetermined.
 - Prompt: "Compare the LOD, Window and Drill-Downs evaluation blockers."
   Expected: calculation/partition/interaction differences traced to inventory coordinates.
 - Prompt: "Can this report be fully automated?"
