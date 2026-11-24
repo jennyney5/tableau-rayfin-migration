@@ -34,15 +34,24 @@ require owner-confirmed inputs; absence is an evidence gap, not infeasibility.
 
 ## Decision Boundaries
 
-- Category 1 requires a verified unattended path; none is currently established.
-- Category 2 is the current provisional recommendation under the reviewed profile.
-- Category 3 requires an owner-approved required-behavior/target-constraint conflict;
-  it is not inferred from complexity, missing access or malformed inputs.
+- Category 1 predicts supported agent-executed work with no required human migration
+  steps or unknown capabilities. Agent coding/reasoning is not human intervention.
+- Category 2 identifies a specific required human step. Native forecast metadata
+  triggers the current manual forecast-output/model-details download path.
+- Category 3 requires an explicit unsupported required behavior under an approved
+  target constraint, alternatives reviewed, approver and reassessment condition.
+- Unknown capability coverage remains undetermined, unless a known unsupported
+  required behavior already establishes category 3. Missing access, missing
+  evidence and malformed input do not establish infeasibility.
 - A completed evaluation does not certify a migration or require migration trials.
 
 ## Reuse And Testing
 
 Run the offline synthetic tests and a local assessment from the extracted ZIP.
 Test natural-language skill prompts in a fresh compatible assistant session.
-Any later empirical calibration must be a separately approved migration effort
-with independent source/target evidence and held-out cases.
+The owner-labeled calibration set expects seven category-1 workbooks and one
+category-2 native-forecast workbook. These optional local inputs are not bundled;
+set TABLEAU_BENCHMARK_DIR to run them. Feature-based synthetic tests cover category 3,
+renaming, disabled forecasts and unknown functions. Calibration is not held-out
+accuracy evidence. Broader claims need independent source/target evidence and
+previously unseen cases; no migrations are required to run the evaluation tests.

@@ -33,10 +33,10 @@ An evaluation can be complete even though per-workbook migration acceptance
 remains `needs_evidence`. Do not run `prepare-evidence` or `verify` just to
 test evaluation. Those commands address a separate, optional migration lifecycle.
 
-The current profile is conservative: valid workbooks receive a provisional
-category-2 recommendation with different blocker findings. It is not yet a
-calibrated three-way classifier. It does not certify category 1 or infer
-category 3 from complexity, missing access, or missing evidence.
+The versioned profile classifies required human intervention, not complexity.
+Agent reasoning, report-specific coding and validation do not downgrade a report.
+Recommendations are feature-based predictions, not guarantees of migration parity.
+Unknown capabilities remain undetermined rather than being forced into a category.
 
 ## Start Here
 
@@ -96,14 +96,41 @@ reports. Detection is candidate coverage, not accepted migration equivalence.
 
 ## Category Rules
 
-1. **Fully automated:** unavailable as a certified capability in this MVP. The current skill requires report-specific reviewed bindings and has no generic unattended translator. Future support requires a versioned capability change backed by held-out migration and clean-rerun evidence.
-2. **Semi automated:** the current provisional recommendation; confirmed only after independent acceptance of required data, calculation, query, interaction/runtime and security evidence, and resolution of findings.
-3. **Not migratable under current constraints:** requires a documented required behavior, attempted supported path, owner-approved blocking constraint and reassessment condition.
+1. **Fully automated:** detected behavior has supported agent-executed paths, with no required manual migration steps or unknown capabilities. Agent-specific implementation, LOD/table calculations, relationships, custom visuals and interaction complexity do not themselves downgrade the report.
+2. **Semi automated:** a specific human migration task is necessary. Enabled native Tableau forecasting currently requires a manual download of forecast output, intervals and model details; automatic ingestion follows that step.
+3. **Not migratable under current constraints:** a required behavior has no supported path under an explicitly approved constraint. The profile rule must document the requirement, constraint, alternatives reviewed, approver and reassessment condition. Complexity, missing access and malformed input are not category 3.
 
-Missing evidence leaves `category: null`, status `needs_evidence`, and
-`full_migration_certified: false`. A category-2 recommendation is not a promise
-that all unknown features are feasible. A successful build/export/inventory is
-not certification.
+`recommended_category` is 1, 2, 3 or null (undetermined). An unsupported required
+behavior takes precedence; otherwise unknown capability coverage prevents a complete
+recommendation, even if a manual step is already known. Reports include capability
+decisions, source coordinates, required human steps, unknowns and assumptions.
+The seven blocker families remain diagnostics and validation tasks, not score thresholds.
+
+Routine consent, credentials and final acceptance are prerequisites, not manual
+migration work. Embedded data or authorized source access and target permissions
+are assumed; this local command does not test live access. Nonstandard functions,
+external analytics, extensions and uncovered analytical models require capability
+review rather than an automatic success claim. Static detection is not exhaustive.
+
+Modify a copy of the capability profile and pass `--profile <file>` to either
+`evaluate` or `assess`. Rules use `automatic`, `manual`, `unsupported` or `unknown`.
+Every rule needs `reason` and `next_action`. An `unsupported` rule additionally
+requires `requirement`, `constraint`, `supported_path_review`,
+`constraint_approved_by` and `reassessment_condition`. Do not invent approvals.
+For example, required live external analytics may be category 3 if approved target
+policy prohibits that service and local rewriting/materialization cannot satisfy
+the live-service requirement. Without that constraint review it stays undetermined.
+
+Calibration matches eight owner-labeled reports: seven fully automated and the
+native-forecast case semi automated. The classifier uses source metadata, not report
+names or hashes. Category-3 coverage is synthetic constraint testing; no held-out
+real-world category-3 accuracy or universal migration success is established.
+
+Evaluation leaves `category: null`, status `needs_evidence`, and
+`full_migration_certified: false` because migration acceptance is separate.
+A completed evaluation and a successful build/export/inventory are not certification.
+Optional `verify` distinguishes observed zero-intervention acceptance (1), accepted
+human-assisted work (2), and owner-approved conflicts (3); its evidence remains attested.
 
 ## Optional Migration Acceptance
 
@@ -197,6 +224,12 @@ these operator instructions. Extract it into a new folder, use the setup above,
 and run the Public-only benchmark or a customer-provided TWBX. It excludes app
 projects, credentials, run data and third-party workbooks. Its hash manifest
 records the bundled files.
+
+To include the eight original owner-labeled calibration workbooks, set
+`$env:TABLEAU_BENCHMARK_DIR` to the directory containing authorized local copies
+before running pytest. Without it those eight tests skip; synthetic three-way,
+renaming, disabled-forecast, unknown-function and comment/string tests still run.
+Workbook inputs and generated reports are never included in the reusable bundle.
 
 Onboarding acceptance: the customer runs `evaluate`, opens the summary and
 traces a blocker to its source coordinates. No cloud connection or migration

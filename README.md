@@ -13,9 +13,10 @@ This repository contains two separate skills sharing versioned inventory tooling
 | Recreate a workbook and validate the result | [tableau-rayfin-migration](.github/skills/tableau-rayfin-migration/SKILL.md) | Explicit source/target authorization required |
 
 Evaluation does not initiate migration, create apps/models, or require migration
-acceptance evidence. The current evaluation profile provides conservative,
-provisional semi-automated recommendations; it is not a calibrated three-way
-classifier or a guarantee of feasibility.
+acceptance evidence. The versioned profile differentiates supported agent work
+(category 1), required human steps (2), and explicit unsupported requirements under
+approved target constraints (3). Unknown capabilities remain undetermined.
+These are readiness predictions, not guarantees of migration parity.
 
 After installing the helpers below, evaluate a private TWBX or directory:
 

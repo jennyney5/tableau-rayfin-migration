@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -15,14 +16,14 @@ evaluator = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(evaluator)
 
 
-def workbook(path: Path, formula: str = "SUM([Sales])") -> Path:
+def workbook(path: Path, formula: str = "SUM([Sales])", worksheet_xml: str = "") -> Path:
     source = path / "test.twbx"
     with ZipFile(source, "w") as archive:
         archive.writestr("test.twb", f'''<workbook><datasources><datasource name="Orders">
 <column name="[Sales]" datatype="real"/><column name="[Calc]" caption="Calculated">
 <calculation formula="{formula}"/></column></datasource></datasources>
 <worksheets><worksheet name="Sales"><table><view><datasource-dependencies datasource="Orders"/>
-</view><rows>[Orders].[Calc]</rows></table></worksheet></worksheets></workbook>''')
+</view><rows>[Orders].[Calc]</rows></table>{worksheet_xml}</worksheet></worksheets></workbook>''')
     return source
 
 
@@ -58,7 +59,7 @@ def evidence(tmp_path: Path, assessment_path: Path) -> Path:
 def test_static_assessment_never_certifies(tmp_path: Path) -> None:
     result = evaluator.load(assessment(tmp_path))
     assert result["category"] is None
-    assert result["recommended_category"] == 2
+    assert result["recommended_category"] == 1
     assert not result["full_migration_certified"]
     assert {item["blocker"] for item in result["findings"]} >= {
         "calculation_semantics", "data_types", "security", "ambiguous_source_logic"}
@@ -80,13 +81,101 @@ def test_comments_and_strings_do_not_invent_security(tmp_path: Path) -> None:
     assert not any(item["detected"] == "Identity-dependent calculation detected." for item in evaluator.findings_for(manifest))
 
 
-def test_current_profile_cannot_claim_category_one(tmp_path: Path) -> None:
+def test_observed_manual_intervention_is_category_two(tmp_path: Path) -> None:
     original = assessment(tmp_path)
     declaration = evidence(tmp_path, original)
     result = evaluator.verify(original, declaration, tmp_path / "accepted")
     assert result["category"] == 2
     assert result["full_migration_certified"]
     assert result["intervention_count"] == 1
+
+
+def test_observed_automation_without_interventions_is_category_one(tmp_path: Path) -> None:
+    original = assessment(tmp_path)
+    path = evidence(tmp_path, original)
+    declaration = evaluator.load(path)
+    declaration["interventions"] = []
+    evaluator.save(path, declaration)
+    result = evaluator.verify(original, path, tmp_path / "automatic")
+    assert result["category"] == 1
+    assert result["full_migration_certified"]
+
+
+@pytest.mark.parametrize("formula", ["SUM([Sales])", "{FIXED : SUM([Sales])}",
+                                    "WINDOW_SUM(SUM([Sales]))", "RANK_UNIQUE(SUM([Sales]))"])
+def test_supported_complexity_is_not_human_intervention(tmp_path: Path, formula: str) -> None:
+    source = workbook(tmp_path, formula)
+    result = evaluator.assess(source, ROOT / "capability-profile.json", tmp_path / "auto")
+    assert result["recommended_category"] == 1
+    assert result["required_human_steps"] == []
+
+
+@pytest.mark.parametrize("enabled, expected", [("true", 2), ("false", 1)])
+def test_forecast_metadata_not_filename_controls_manual_step(tmp_path: Path, enabled: str, expected: int) -> None:
+    source = workbook(tmp_path, worksheet_xml=f'<forecast-specification enabled="{enabled}" model-type="auto-season"/>')
+    source = source.rename(tmp_path / "Arbitrary renamed source.twbx")
+    result = evaluator.assess(source, ROOT / "capability-profile.json", tmp_path / "forecast")
+    assert result["recommended_category"] == expected
+    assert len(result["required_human_steps"]) == int(enabled == "true")
+    if enabled == "true":
+        step = result["required_human_steps"][0]
+        assert step["feature"] == "native_forecast"
+        assert "model details" in step["next_action"]
+        assert step["worksheets"] == ["Sales"]
+        assert result["worksheet_decisions"][0]["recommended_category"] == 2
+    assert result["category"] is None
+    assert not result["full_migration_certified"]
+
+
+@pytest.mark.parametrize("formula, expected", [
+    ("UNRECOGNIZED_FUNCTION([Sales])", None),
+    ("SCRIPT_REAL('return 1', SUM([Sales]))", None),
+    ("SUM([Sales]) // UNRECOGNIZED_FUNCTION()", 1),
+    ("'SCRIPT_REAL() forecast-specification USERNAME()'", 1),
+    ("USERNAME()", None),
+])
+def test_unrecognized_capabilities_are_not_silently_automated(tmp_path: Path, formula: str, expected: int | None) -> None:
+    result = evaluator.assess(workbook(tmp_path, formula), ROOT / "capability-profile.json", tmp_path / "unknown")
+    assert result["recommended_category"] == expected
+    assert bool(result["unknown_capabilities"]) == (expected is None)
+
+
+@pytest.mark.parametrize("status, expected", [("automatic", 1), ("manual", 2), ("unsupported", 3), ("unknown", None)])
+def test_explicit_capability_profile_differentiates_all_categories(tmp_path: Path, status: str, expected: int | None) -> None:
+    profile = evaluator.load(ROOT / "capability-profile.json")
+    profile["automation_rules"]["external_analytics"] = {
+        "status": status, "reason": "Fixture: required live external analytics service.",
+        "next_action": "Fixture: follow the approved runtime decision.",
+        "requirement": "Preserve live calls to the external analytics service, not a local replacement.",
+        "constraint": "Approved target policy forbids calls to this external service.",
+        "supported_path_review": "Local rewrite and materialization do not preserve the required live-service behavior.",
+        "reassessment_condition": "Permit an approved live service endpoint or change the requirement.",
+        "constraint_approved_by": "Synthetic security owner (fixture only)",
+    }
+    path = tmp_path / "profile.json"
+    evaluator.save(path, profile)
+    source = workbook(tmp_path, "SCRIPT_REAL('return 1', SUM([Sales]))")
+    result = evaluator.assess(source, path, tmp_path / "explicit")
+    assert result["recommended_category"] == expected
+    assert len(result["unsupported_requirements"]) == int(expected == 3)
+    assert not result["full_migration_certified"]
+
+
+def test_category_three_requires_specific_constraint_and_path_review(tmp_path: Path) -> None:
+    profile = evaluator.load(ROOT / "capability-profile.json")
+    profile["automation_rules"]["core_workbook"]["status"] = "unsupported"
+    path = tmp_path / "incomplete-profile.json"
+    evaluator.save(path, profile)
+    with pytest.raises(ValueError, match="Unsupported rules require"):
+        evaluator.assess(workbook(tmp_path), path, tmp_path / "invalid")
+
+
+def test_unknown_capability_is_not_hidden_by_manual_forecast(tmp_path: Path) -> None:
+    source = workbook(tmp_path, "UNKNOWN_FUNCTION([Sales])", '<forecast-specification enabled="true"/>')
+    result = evaluator.assess(source, ROOT / "capability-profile.json", tmp_path / "mixed")
+    assert result["recommended_category"] is None
+    assert result["required_human_steps"]
+    assert result["unknown_capabilities"]
 
 
 @pytest.mark.parametrize("gate", evaluator.GATES)
@@ -213,3 +302,27 @@ def test_evaluation_processing_failure_is_not_category_three(tmp_path: Path) -> 
     assert result["evaluation_status"] == "partial"
     assert result["workbooks"][0]["evaluation_status"] == "failed"
     assert "recommended_category" not in result["workbooks"][0]
+
+
+@pytest.mark.parametrize("filename, expected", [
+    ("All Different Types of Drill-Downs in Tableau _ #VOTD _ #VizOfTheDay.twbx", 1),
+    ("HR Dashboard RWFD 2024.twbx", 1),
+    ("KPI Business Dashboard.twbx", 1),
+    ("Mastering Tableau 17. Table calculations #2 - Window comparisons.twbx", 1),
+    ("Mastering Tableau 8. LOD #1 - FIXED, INCLUDE, EXCLUDE examples.twbx", 1),
+    ("Performance Optimization with Crunchbase Data.twbx", 2),
+    ("Seattle-Incidents-ComplexDashboard.twbx", 1),
+    ("Two Eras of Safety (Iron Viz 2025 Winner) (1).twbx", 1),
+])
+def test_owner_labeled_calibration_workbooks(tmp_path: Path, filename: str, expected: int) -> None:
+    directory = os.environ.get("TABLEAU_BENCHMARK_DIR")
+    if not directory:
+        pytest.skip("Set TABLEAU_BENCHMARK_DIR to authorized local workbook copies; inputs are not bundled")
+    source = Path(directory) / filename
+    assert source.is_file(), f"Calibration input missing: {filename}"
+    result = evaluator.assess(source, ROOT / "capability-profile.json", tmp_path / "calibration")
+    assert result["recommended_category"] == expected
+    assert not result["unknown_capabilities"]
+    assert not result["unsupported_requirements"]
+    assert bool(result["required_human_steps"]) == (expected == 2)
+    assert result["full_migration_certified"] is False

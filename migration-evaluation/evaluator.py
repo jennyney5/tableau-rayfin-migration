@@ -10,13 +10,15 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from zipfile import ZipFile
 
+from defusedxml.ElementTree import fromstring
 from jsonschema import validate
 
 from tableau_migration.expressions import expression_tokens
 from tableau_migration.inventory import inspect_workbook
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 ROOT = Path(__file__).resolve().parent
 BLOCKERS = {
     "calculation_semantics": "Calculation semantics",
@@ -29,6 +31,94 @@ BLOCKERS = {
 }
 GATES = ("provenance", "physical_data", "worksheet_calculations", "app_queries",
          "runtime", "security", "independent_review")
+CATEGORIES = {1: "Fully automated", 2: "Semi automated", 3: "Not feasible", None: "Undetermined"}
+
+
+def automation_decision(manifest: dict[str, Any], profile: dict[str, Any]) -> dict[str, Any]:
+    rules = profile["automation_rules"]
+    supported = set(profile["supported_functions"])
+    decisions: list[dict[str, Any]] = []
+
+    def add(feature: str, coordinate: str, worksheets: list[str]) -> None:
+        rule = rules.get(feature, {"status": "unknown", "reason": "No capability rule covers this feature.",
+                                   "next_action": "Establish a supported automatic or manual path."})
+        if rule.get("status") not in {"automatic", "manual", "unsupported", "unknown"}:
+            raise ValueError(f"Invalid automation status for {feature}")
+        if not rule.get("reason") or not rule.get("next_action"):
+            raise ValueError(f"Capability rule requires reason and next_action: {feature}")
+        if rule["status"] == "unsupported" and not all(
+            isinstance(rule.get(key), str) and rule[key].strip()
+            for key in ("requirement", "constraint", "supported_path_review", "reassessment_condition", "constraint_approved_by")
+        ):
+            raise ValueError("Unsupported rules require requirement, constraint, supported_path_review, reassessment_condition and constraint_approved_by")
+        decisions.append({"feature": feature, "source_coordinate": coordinate,
+                          "worksheets": worksheets, **rule})
+
+    names = [sheet["name"] for sheet in manifest["worksheets"]]
+    add("core_workbook", "workbook", names)
+    for field in manifest["fields"]:
+        if not field["required_by_worksheets"] or field.get("formula") is None:
+            continue
+        try:
+            _, code = expression_tokens(field["formula"])
+        except ValueError:
+            add("unparsed_expression", field["id"], field["required_by_worksheets"])
+            continue
+        functions = set(re.findall(r"\b([A-Z_][A-Z_0-9]*)\s*\(", code.upper())) - {"IF", "ELSEIF", "THEN", "ELSE", "AND", "OR", "NOT"}
+        external = {name for name in functions if name.startswith(("SCRIPT_", "MODEL_EXTENSION_"))}
+        if external:
+            add("external_analytics", field["id"], field["required_by_worksheets"])
+        for name in sorted(functions - supported - external):
+            add(f"function:{name}", field["id"], field["required_by_worksheets"])
+    for marker in manifest.get("automation_metadata", []):
+        add(marker["feature"], marker["source_coordinate"], marker["worksheets"])
+
+    def category_for(items: list[dict[str, Any]]) -> int | None:
+        statuses = {item["status"] for item in items}
+        if "unsupported" in statuses:
+            return 3
+        if "unknown" in statuses:
+            return None
+        return 2 if "manual" in statuses else 1
+
+    category = category_for(decisions)
+    return {
+        "recommended_category": category,
+        "recommendation": CATEGORIES[category],
+        "basis": "Feature-based prediction of required human intervention, not migration-parity certification.",
+        "automation_assumptions": profile["assumptions"],
+        "capability_decisions": decisions,
+        "required_human_steps": [item for item in decisions if item["status"] == "manual"],
+        "unsupported_requirements": [item for item in decisions if item["status"] == "unsupported"],
+        "unknown_capabilities": [item for item in decisions if item["status"] == "unknown"],
+        "worksheet_decisions": [{"worksheet": name, "category": None,
+                                  "recommended_category": category_for([item for item in decisions if name in item["worksheets"]]),
+                                  "status": "readiness_prediction"} for name in names],
+    }
+
+
+def automation_metadata(workbook: Path, manifest: dict[str, Any]) -> list[dict[str, Any]]:
+    with ZipFile(workbook) as archive:
+        root = fromstring(archive.read(manifest["source"]["twb_member"]))
+    for element in root.iter():
+        element.tag = element.tag.rsplit("}", 1)[-1]
+    markers: list[dict[str, Any]] = []
+    for sheet in root.findall("./worksheets/worksheet"):
+        for index, element in enumerate(sheet.iter()):
+            feature = None
+            if element.tag == "forecast-specification" and element.get("enabled", "false").lower() == "true":
+                feature = "native_forecast"
+            elif element.tag in {"trend-line", "trend-lines", "cluster", "clustering"}:
+                feature = "analytic_model"
+            if feature:
+                markers.append({"feature": feature, "source_coordinate": f"worksheet::{sheet.get('name')}::{element.tag}[{index}]",
+                                "worksheets": [sheet.get("name")], "attributes": dict(element.attrib)})
+    names = [sheet["name"] for sheet in manifest["worksheets"]]
+    for index, element in enumerate(root.iter()):
+        if element.tag in {"dashboard-extension", "extension", "extension-manifest"}:
+            markers.append({"feature": "dashboard_extension", "source_coordinate": f"{element.tag}[{index}]",
+                            "worksheets": names, "attributes": dict(element.attrib)})
+    return markers
 
 
 def digest(path: Path) -> str:
@@ -137,11 +227,13 @@ def assess(workbook: Path, profile_path: Path, output: Path) -> dict[str, Any]:
     if workbook.suffix.lower() != ".twbx" or not workbook.is_file():
         raise ValueError("Input must be an existing TWBX file")
     profile = load(profile_path)
-    if profile.get("target") != "rayfin-semantic-model" or profile.get("automatic_migration_verified") is not False:
-        raise ValueError("This MVP supports only the current reviewed Rayfin profile; automatic migration is unverified")
+    if profile.get("target") != "rayfin-semantic-model" or profile.get("automation_boundary") != "required-human-intervention":
+        raise ValueError("A Rayfin required-human-intervention capability profile is required")
     manifest = inspect_workbook(workbook)
     if not manifest["worksheets"]:
         raise ValueError("Workbook has no inventoried worksheets")
+    manifest["automation_metadata"] = automation_metadata(workbook, manifest)
+    automation = automation_decision(manifest, profile)
     new_run(output)
     save(output / "inventory.json", manifest)
     save(output / "profile.json", profile)
@@ -154,12 +246,11 @@ def assess(workbook: Path, profile_path: Path, output: Path) -> dict[str, Any]:
         "source": manifest["source"], "profile_sha256": digest(profile_path),
         "inventory_sha256": digest(output / "inventory.json"), "target": profile["target"],
         "profile_version": profile["version"], "assessment_status": "needs_evidence",
-        "category": None, "recommended_category": 2, "decision_stage": "provisional",
+        "category": None, "decision_stage": "provisional",
         "full_migration_certified": False,
-        "explanation": "Reviewed report-specific bindings are required by the current skill; static inventory does not prove feasibility or parity.",
+        "explanation": automation["basis"],
         "counts": manifest["counts"], "findings": findings,
-        "worksheet_decisions": [{"worksheet": sheet["name"], "category": None,
-                                 "status": "needs_evidence"} for sheet in manifest["worksheets"]],
+        **automation,
         "gates": {gate: "unverified" for gate in GATES},
         "limitations": manifest["limitations"] + [
             "No Tableau or Fabric connection, migration, source-result capture or deployment was performed.",
@@ -185,8 +276,11 @@ def evaluate_portfolio(input_path: Path, profile_path: Path, output: Path) -> di
             assessment = assess(package, profile_path, output / relative)
             results.append({
                 "workbook": package.name, "evaluation_status": "completed",
-                "recommendation": "Semi automated (provisional)",
+                "recommendation": assessment["recommendation"] + " (predicted)",
                 "recommended_category": assessment["recommended_category"],
+                "required_human_steps": assessment["required_human_steps"],
+                "unsupported_requirements": assessment["unsupported_requirements"],
+                "unknown_capabilities": assessment["unknown_capabilities"],
                 "worksheets": assessment["counts"]["worksheets"],
                 "findings": {key: sum(item["blocker"] == key for item in assessment["findings"])
                              for key in BLOCKERS},
@@ -203,8 +297,8 @@ def evaluate_portfolio(input_path: Path, profile_path: Path, output: Path) -> di
     lines = ["# Tableau Evaluation Results", "",
              "Evaluation only: no apps/models were migrated, deployed or queried. No cloud access was used.", "",
              "These are readiness recommendations, not certification of migrated results.",
-             "The current skill requires reviewed report-specific bindings, so its recommendation is category 2.",
-             "Category 1 is not a verified capability; category 3 is not inferred from complexity or missing evidence.", "",
+             "1 = supported agent-executed work; 2 = required manual step; 3 = explicit unsupported requirement/constraint conflict.",
+             "Unknown capabilities remain undetermined. Review-finding counts do not set the category.", "",
              "| Workbook | Evaluation | Recommendation | Worksheets | Review findings | Report |",
              "|---|---|---|---:|---:|---|"]
     for item in results:
@@ -312,10 +406,12 @@ def verify(assessment_path: Path, evidence_path: Path, output: Path) -> dict[str
     ) and evidence.get("scope_approved") is True and evidence.get("independent_review_completed") is True and all(
         resolution["status"] == "resolved" for resolution in resolutions.values()
     )
-    category = 3 if conflict else 2 if passed else None
+    observed_category = 2 if interventions else 1
+    category = 3 if conflict else observed_category if passed else None
     result = dict(assessment)
     result.update({
-        "category": category, "recommended_category": 3 if conflict else 2,
+        "category": category, "recommended_category": category if category else assessment["recommended_category"],
+        "recommendation": CATEGORIES[category if category else assessment["recommended_category"]],
         "decision_stage": "confirmed" if category else "provisional",
         "assessment_status": "complete" if category else "needs_evidence",
         "full_migration_certified": passed and not bool(conflict),
@@ -331,7 +427,7 @@ def verify(assessment_path: Path, evidence_path: Path, output: Path) -> dict[str
         "explanation": "Owner-approved requirement/constraint conflict." if conflict else
                        "Independent reviewer accepted required evidence for the reviewed migration workflow." if passed else
                        "Required evidence, scope approval or independent acceptance is incomplete.",
-        "worksheet_decisions": [{"worksheet": name, "category": None if conflict else 2 if passed else None,
+        "worksheet_decisions": [{"worksheet": name, "category": None if conflict else observed_category if passed else None,
                                  "status": "see workbook constraint" if conflict else "accepted" if passed else "needs_evidence"}
                                 for name in sorted(expected_sheets)],
     })
@@ -369,13 +465,21 @@ def render(result: dict[str, Any]) -> str:
     lines = ["# Tableau Migration Assessment", "",
              f"Workbook: {result['source']['file']}",
              f"Category: {result['category'] or 'undetermined'} ({result['decision_stage']})",
-             f"Recommendation: category {result['recommended_category']}",
+             f"Recommendation: {CATEGORIES[result['recommended_category']]} (category {result['recommended_category'] or 'undetermined'})",
              f"Status: {result['assessment_status']}",
              f"Full migration certified: {str(result['full_migration_certified']).lower()}",
              "", result["explanation"], "",
              f"Source SHA256: {result['source']['sha256']}",
              f"Tool / profile: {result['tool_version']} / {result['profile_version']}",
-             "", "## Acceptance Gates", ""]
+             "", "## Automation Decision", ""]
+    for decision in result.get("capability_decisions", []):
+        lines.extend([f"- {decision['status']}: {decision['feature']} at {decision['source_coordinate']}",
+                      f"  Reason: {decision['reason']}", f"  Next action: {decision['next_action']}"])
+        if decision["status"] == "unsupported":
+            lines.extend(f"  {key}: {decision[key]}" for key in (
+                "requirement", "constraint", "supported_path_review", "reassessment_condition", "constraint_approved_by"))
+    lines.extend(["", "### Assumptions", "", *[f"- {item}" for item in result.get("automation_assumptions", [])]])
+    lines.extend(["", "## Acceptance Gates", ""])
     lines.extend(f"- {gate}: {status}" for gate, status in result["gates"].items())
     lines.extend(["", "## Findings", ""])
     for finding in result["findings"]:

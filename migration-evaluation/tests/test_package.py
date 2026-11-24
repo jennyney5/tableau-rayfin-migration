@@ -53,6 +53,7 @@ def test_bundle_is_first_party_and_imports_its_toolkit(tmp_path: Path) -> None:
     summary = json.loads((extracted / "migration-evaluation/runs/customer-test/evaluation-summary.json").read_text())
     assert summary["evaluation_status"] == "completed"
     assert summary["migration_performed"] is False
+    assert summary["workbooks"][0]["recommended_category"] == 1
     skill_path = extracted / ".github/skills/tableau-migration-evaluation/SKILL.md"
     skill = skill_path.read_text(encoding="utf-8")
     assert skill.startswith("---\nname: tableau-migration-evaluation\n")

@@ -18,7 +18,7 @@
     "target": {"const": "rayfin-semantic-model"},
     "assessment_status": {"enum": ["complete", "needs_evidence", "blocked_environment"]},
     "category": {"enum": [null, 1, 2, 3]},
-    "recommended_category": {"enum": [1, 2, 3]},
+    "recommended_category": {"enum": [null, 1, 2, 3]},
     "decision_stage": {"enum": ["provisional", "confirmed"]},
     "full_migration_certified": {"type": "boolean"},
     "findings": {

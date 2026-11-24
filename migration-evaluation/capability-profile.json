@@ -1,8 +1,48 @@
 {
-  "version": "rayfin-reviewed-2026-11-23-v1",
+  "version": "rayfin-agent-automation-2026-11-23-v2",
   "target": "rayfin-semantic-model",
   "automatic_migration_verified": false,
   "skill": "tableau-rayfin-migration",
+  "automation_boundary": "required-human-intervention",
+  "assumptions": [
+    "Predict migration by the agent-assisted skill, not a generic one-click translator.",
+    "Routine consent, credentials and final acceptance are prerequisites, not manual migration work.",
+    "Report-specific agent reasoning, coding, debugging and validation do not count as human intervention.",
+    "Embedded data or authorized source access and target permissions are available; live access is not tested locally.",
+    "Predictions cover detected source behavior and are not guarantees of end-to-end migration parity."
+  ],
+  "supported_functions": [
+    "ABS", "ATTR", "AVG", "CEILING", "CONTAINS", "COS", "COUNT", "COUNTD",
+    "DATE", "DATEADD", "DATEDIFF", "DATENAME", "DATEPART", "DATETRUNC", "DAY",
+    "ENDSWITH", "EXP", "FIRST", "FLOAT", "FLOOR", "IIF", "IFNULL", "INDEX",
+    "INT", "ISDATE", "ISNULL", "LAST", "LEFT", "LEN", "LN", "LOG", "LOOKUP",
+    "LOWER", "LTRIM", "MAKEDATE", "MAKEDATETIME", "MAKEPOINT", "MAX", "MEDIAN",
+    "MID", "MIN", "MONTH", "NOW", "POWER", "PREVIOUS_VALUE", "QUARTER", "RADIANS",
+    "RANK", "RANK_DENSE", "RANK_MODIFIED", "RANK_PERCENTILE", "RANK_UNIQUE", "REPLACE",
+    "RIGHT", "ROUND", "RTRIM", "RUNNING_AVG", "RUNNING_COUNT", "RUNNING_MAX",
+    "RUNNING_MIN", "RUNNING_SUM", "SIGN", "SIN", "SIZE", "SPLIT", "SQRT",
+    "STARTSWITH", "STDEV", "STDEVP", "STR", "SUM", "TODAY", "TOTAL", "TRIM",
+    "UPPER", "VAR", "VARP", "WEEK", "WINDOW_AVG", "WINDOW_COUNT", "WINDOW_MAX",
+    "WINDOW_MEDIAN", "WINDOW_MIN", "WINDOW_STDEV", "WINDOW_STDEVP", "WINDOW_SUM",
+    "WINDOW_VAR", "WINDOW_VARP", "YEAR", "ZN"
+  ],
+  "automation_rules": {
+    "core_workbook": {
+      "status": "automatic",
+      "reason": "The agent workflow supports data extraction, standard calculations including LOD/table context, relationships, filters, parameters, actions and custom chart authoring. Finding counts measure review work, not human intervention.",
+      "next_action": "Let the agent resolve workbook-specific implementation and run validation; retain all seven blocker-family checks."
+    },
+    "native_forecast": {
+      "status": "manual",
+      "reason": "Enabled Tableau-native forecasting requires source forecast values, intervals and model details not supplied as computed results in the TWBX. The current supported fidelity path requires a manual source download.",
+      "next_action": "A Tableau owner downloads the forecast output and model details; the agent ingests them. Do not silently substitute an independently fitted model."
+    },
+    "external_analytics": {
+      "status": "unknown",
+      "reason": "An external analytics runtime is required; executable code, runtime access and an equivalent path have not been established.",
+      "next_action": "Review the required service/code and approve automatic, manual or unsupported handling under target constraints."
+    }
+  },
   "capabilities": {
     "inventory": "available",
     "tableau_reference_capture": "available_with_reviewed_bindings_and_access",

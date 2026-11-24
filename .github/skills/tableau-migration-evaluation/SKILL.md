@@ -30,7 +30,8 @@ If another skill describes actual migration, do not launch that workflow for an 
 1. Resolve the supplied TWBX path or directory. Ask for it only if none is supplied.
    Directory discovery is nonrecursive. Do not author dashboards in Tableau Desktop.
 2. Read the [capability profile](../../../migration-evaluation/capability-profile.json).
-   Explain its current limitation: generic automatic translation is not verified.
+  Explain the automation boundary: required human migration work, not agent reasoning
+  or the presence of a generic one-click translator. State the profile assumptions.
 3. Select the workspace Python environment; use `.venv/Scripts/python.exe` on Windows
    if available. Do not silently install dependencies or switch environments after failure.
 4. Choose a new output folder under `migration-evaluation/runs/`. Never overwrite prior runs.
@@ -53,19 +54,31 @@ If another skill describes actual migration, do not launch that workflow for an 
 
 ## Classification Rules
 
-| Category | Readiness interpretation | Current evaluator behavior |
+| Category | Readiness interpretation | Decision basis |
 |---|---|---|
-| 1 - Fully automated | Verified unattended support for every required source behavior | Not claimed; no generic automatic translator is verified in the current profile |
-| 2 - Semi automated | Reviewed mappings or bounded engineering likely required | Provisional recommendation for valid workbooks under the current profile |
-| 3 - Not feasible | A required behavior conflicts with an explicitly approved target constraint | Not inferred from complexity, missing access, missing evidence or malformed input |
+| 1 - Fully automated | The agent can perform the migration work under stated prerequisites | All detected capabilities have automatic support rules; no required manual steps or unknowns |
+| 2 - Semi automated | A specific human migration task is required | A manual capability rule names the source coordinate, reason and next action |
+| 3 - Not feasible under current constraints | A required behavior has no supported path under an approved target constraint | An unsupported rule documents requirement, constraint, alternatives reviewed, approver and reassessment condition |
 
-The current tool is a conservative review triage, not an empirically calibrated three-way
-classifier. Different workbooks can have the same category-2 recommendation but very
-different findings. Never promise automatic migration from a simple-looking workbook.
-Do not confirm category 3 unless a source owner supplies the required behavior, target
-constraint, supported-path review, approval and reassessment condition. Report that
-review separately; do not invent attestations or call `verify` to make evaluation succeed.
-Do not mark `full_migration_certified` true in this workflow.
+Unknown capability coverage yields an undetermined recommendation, never an invented
+1, 2 or 3. A known unsupported required behavior takes precedence; otherwise unknowns
+prevent a complete recommendation, even if a manual step is also known.
+Calculation counts, LODs, table calculations, custom chart code, filters and drill-downs
+do not themselves imply human intervention. Routine permissions, consent and final
+acceptance are prerequisites, not manual migration work. Missing access, missing
+evidence and malformed packages are not proof of category 3.
+
+Enabled native `forecast-specification` metadata triggers category 2 with the current
+profile: the owner must download forecast output and model details. Do not silently
+replace it with an independently fitted model. The detector must work after renaming
+the workbook; never implement category lookups by filename or source hash.
+
+The eight owner-labeled calibration cases are seven category 1 and one forecast case
+category 2. Category-3 tests use explicit synthetic constraints, not a confirmed
+infeasible real-world workbook. This is calibration, not held-out accuracy evidence.
+Return `recommended_category` as a readiness prediction. The separate `category`
+field remains null until optional migration acceptance. Never call `verify` merely
+to complete evaluation or mark `full_migration_certified` true in this workflow.
 
 ## Testing
 
@@ -74,7 +87,11 @@ Do not mark `full_migration_certified` true in this workflow.
 - Prompt: "Compare the LOD, Window and Drill-Downs evaluation blockers."
   Expected: calculation/partition/interaction differences traced to inventory coordinates.
 - Prompt: "Can this report be fully automated?"
-  Expected: current profile limitation, not an invented category-1 approval.
+  Expected: feature-based recommendation, required human steps/unknowns and assumptions,
+  not a downgrade for complexity or a promise of migration parity.
+- Prompt: "Evaluate a forecast workbook under a target constraint."
+  Expected: forecast/model download step; category 3 only for a documented approved
+  unsupported required behavior, not merely because native forecasting is detected.
 - Run the [evaluation tests](../../../migration-evaluation/tests/test_evaluator.py)
   before changing detector or classification behavior.
 - Unit tests do not prove natural-language skill triggering; test these prompts in a
